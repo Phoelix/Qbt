@@ -22,10 +22,10 @@ INPUT,WALLET = range(2)
 
 def start(bot, update):
     update.message.reply_text(str(RU.welcome1.format(update.effective_chat.first_name)))
-    price = requests.get('https://min-api.cryptocompare.com/data/price?fsym=RUB&tsyms=BTC').json()
-    pricenum = float(price['BTC'])
-    min_sum = pricenum * 1000
-    update.message.reply_text(str(RU.PricenFee3.format(min_sum, pricenum, 1))) # TODO Комиссия
+    price = requests.get('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
+    pricenum = float(price['RUB'])
+    min_sum = 1000.0/pricenum
+    update.message.reply_text(str(RU.PricenFee3.format(min_sum, pricenum, 1)))  # TODO Комиссия
     logger.info("User %s start the conversation." % update.message.from_user.first_name)
     user = update.message.from_user
     db = SQLite()
@@ -54,24 +54,27 @@ def inp(bot, update):
     user = update.message.from_user
     text = update.message.text
     db = SQLite()
-    if  re.match(r'[A-Za-z0-9]{34,40}', text):               # BTC Wallet
+    if  re.match(r'[A-Za-z0-9]{34,40}', text):               # BTC Wallet  TODO use_your_power wallet
         reg = re.match(r'[A-Za-z0-9]{34,40}', text).group(0)
         result = requests.get('https://blockchain.info/rawaddr/'+reg).json()
         print(reg)
         logger.info("User %s input wallet." % user.first_name)
-    elif re.match(r'[0-9]{13}', text):                        # QIWI Transaction
+    elif re.match(r'[0-9]{13}', text):                        # QIWI Transaction TODO use_your_power QIWI
         reg = re.search(r'[0-9]{13}', text).group(0)
 
     elif 1000.0<float(text)<10000.0 or 0.001<float(text)<10:                          # RUB to exchange TODO regexp to find value
         update.message.reply_text(str(RU.inputVal))
         sql = 'INSERT INTO transact_temp (tgID, RUB, BTC) VALUES(?,?,?) ON CONFLICT(tgID) DO UPDATE SET RUB = excluded.RUB, BTC = excluded.BTC'
+        req = requests.get('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
         if 1000.0<float(text)<10000.0:
-            btc =
-            data = [int(user.id), float(text), ]
+            btc =float(text)/float(req['RUB'])
+            data = [int(user.id), float(text), "{0:.7f}".format(btc)]
+        else:
+            rub = float(text)* float(req['RUB'])
+            data = [int(user.id), rub, float(text)]
         db.use_your_power(sql, data)
+        print(text)
 
-    logger.info("User %s input end block." % user.first_name)
-    update.message.reply_text(RU.inputVal)
     return INPUT
 
 
