@@ -20,19 +20,29 @@ parser.read('options.conf')
 
 INPUT,WALLET = range(2)
 
-temp = ()
-
 def start(bot, update):
-    keyboard = [[RU.buyBTC_btn]]
-    update.message.reply_text(str(RU.welcome), reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
-    logger.info("User %s start the game." % update.message.from_user.first_name)
+    update.message.reply_text(str(RU.welcome1.format(update.effective_chat.first_name)))
+    price = requests.get('https://min-api.cryptocompare.com/data/price?fsym=RUB&tsyms=BTC').json()
+    pricenum = float(price['BTC'])
+    min_sum = pricenum * 1000
+    update.message.reply_text(str(RU.PricenFee3.format(min_sum, pricenum, 1))) # TODO Комиссия
+    logger.info("User %s start the conversation." % update.message.from_user.first_name)
+    user = update.message.from_user
+    db = SQLite()
+    try:
+        db.use_your_power(
+            sql='INSERT OR IGNORE INTO members (tgID, uname, fname) VALUES (?,?,?)',
+            data=(user.id, user.name, user.first_name))
+    except Error:
+        logger.warn('User "%s", error "%s"' % (user.id, error))
+        return INPUT
     return INPUT
 
 
 def cancel (bot,update):    # /cancel function
     user = update.message.from_user
     logger.info("User %s canceled the conversation."%user.first_name)
-    update.message.reply_text(str(RU.bye_a).format(user.first_name), reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text(str(RU.bye1).format(user.first_name), reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
@@ -41,32 +51,23 @@ def error (bot,update,error):       # if the bot slove error in update
 
 
 def inp(bot, update):
-    global temp
     user = update.message.from_user
-    db = SQLite()
-    try:
-        i ={'userID': temp[int(user.id)]}
-    except :
-        try:
-            i = {'userID': int(db.get_member(user.id))}
-        except :
-            logger.warn('User "%s", error "%s"' % (user.id, error))
-            try:
-                db.add_member(data=(user.id, user.name, user.first_name))
-                i = { 'userID': user.id}
-            except Error:
-                logger.warn('User "%s", error "%s"' % (user.id, error))
-                return INPUT
-    reg =  re.search(r'[A-Za-z0-9]{34,40}', update.message.text).group(0)
-    if re.match(r'[A-Za-z0-9]{34,40}', update.message.text):
+    global temp
+
+    if  re.match(r'[A-Za-z0-9]{34,40}', update.message.text):
+        reg = re.match(r'[A-Za-z0-9]{34,40}', update.message.text).group(0)
         result = requests.get('https://blockchain.info/rawaddr/'+reg).json()
-        i['wallet'] = reg
-        print(result)
+        i = Member.Member(user.id)
+        i.add_wall(reg)
+        temp.append(i)
+        print(reg)
         logger.info("User %s input wallet." % user.first_name)
+    elif re.match(r'[0-9]{13}',update.message.text):
+        reg = re.search(r'[0-9]{13}', update.message.text).group(0)
+        temp[user.id].add_trID(reg)
     logger.info("User %s input end block." % user.first_name)
     update.message.reply_text(RU.inputVal)
     return INPUT
-
 
 
 def main ():            # workplace
@@ -74,10 +75,9 @@ def main ():            # workplace
     dp = updater.dispatcher
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
-
         states={
             INPUT:[
-                MessageHandler(Filters.text, inp),
+                MessageHandler(Filters.all, inp),
                 CommandHandler('start',start),
                 CommandHandler('cancel',cancel)],
         },
