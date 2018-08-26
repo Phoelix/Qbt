@@ -5,8 +5,6 @@ import logging
 import requests
 from SQLite import SQLite
 from sqlite3 import Error
-from configparser import ConfigParser
-from telegram import (ReplyKeyboardMarkup, ParseMode, ReplyKeyboardRemove)
 from telegram.ext import (Updater,CommandHandler,MessageHandler,Filters,RegexHandler,
                           ConversationHandler)
 
@@ -14,9 +12,6 @@ logging.basicConfig(filename="WORKLOG.log", format='%(asctime)s - %(name)s - %(l
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-
-parser = ConfigParser()
-parser.read('options.conf')
 
 INPUT,WALLET = range(2)
 
@@ -110,13 +105,21 @@ def inp(bot, update):
 
 def admin(bot, update):
     a=1
+    print(a)
+    update.message.reply_text(str(RU.oops))
     # 1 TODO adminpannel
 
 def main ():            # workplace
-    updater = Updater(parser.get('core', 'token'))
+    db = SQLite()
+    sql = "SELECT val FROM variables WHERE name = (?)"
+    admResult = db.use_your_power(sql, ('admin',)).fetchall()
+    adm = list(str(admResult[0]).split(' '))
+    token = db.use_your_power(sql, ('token',)).fetchall()
+    updater = Updater(token[0][0])
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler('start', start))
-    dp.add_handler(CommandHandler('admin', admin,Filters.user(parser.get('core', 'admin'))))
+    dp.add_handler(CommandHandler('admin', start))
+    dp.add_handler(CommandHandler('help', admin))
+#, Filters.user(adm)
     dp.add_handler(MessageHandler(Filters.all, inp))
     dp.add_error_handler(error)
     updater.start_polling()
