@@ -86,22 +86,16 @@ def inp(bot, update):
             'https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
         if 1000.0<x<10000.0:
             btc =x/float(req['RUB'])
-            RtoB = "{0:.7f}".format(btc)
+            rub = x
         else:
             rub = x * float(req['RUB'])
-            RtoB = "{0:.2f}".format(rub)
-        sql = 'replace into tempt(ID, tgID, RtoB, wallet, trID, status) values (?,?,?,?,?,?)'
-        data = ('select id from tempt where tgID = {}'.format(user.id),
-                user.id,
-                RtoB,
-                'select wallet from tempt where tgID = {}'.format(user.id),
-                'select trID from tempt where tgID = {}'.format(user.id),
-                'select status from tempt where tgID = {}'.format(user.id))
-
+            btc = x
+        sql = 'update tempt set rub = (?), btc = (?)'
+        data = (rub, btc)
     else:
-        update.message.reply_text(str(RU.oops+'\n'+RU.techSupport1.format()))
-
+        return update.message.reply_text(str(RU.oops+'\n'+RU.techSupport1.format()))
     db.use_your_power(sql, data)
+
 
 def admin(bot, update):
     a=1
