@@ -24,7 +24,7 @@ conn = lbcAPI.hmac(hmack,hmacs)
 
 def start(bot, update):
     db = SQLite()
-    comission = db.use_your_power('SELECT val FROM variables WHERE name = "comission"').fetchall()[0][0]  # TODO commision
+    comission = db.use_your_power('SELECT val FROM variables WHERE name = "comission"').fetchall()[0][0]
     update.message.reply_text(str(RU.welcome1.format(update.effective_chat.first_name)))
     price = requests.get('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
     pricenum = float(price['RUB'])
@@ -77,26 +77,52 @@ def echo(bot, update):
         update.message.reply_text(str(RU.wallExist1.format(wallet)))
         sql = 'update tempt set wallet = (?)'
         data = (wallet,)
-
-        val = db.use_your_power('select rub, btc, onQIWI from tempt where tgID = (?)',(user.id,)).fetchall()
-        onwall = db.use_your_power('select token from QIWI where WallID = (?)', (val[0]))     # TODO select onQIWI frrom val
-        update.message.reply_text(str(RU.enteredData3.format(val)))    #TODO separate val's
-        update.message.reply_text(str(RU.ifChange+RU.payonQIWI2.format(val))) #TODO get wall and rub from val
+        e = db.use_your_power(sql, data).fetchall()
+        val = db.use_your_power('select rub, btc, onQIWI from tempt where tgID = (?)',(user.id,)).fetchall()[0]
+        update.message.reply_text(str(RU.ifChange+RU.payonQIWI2.format(val[2],val[0]))) #TODO get wall and rub from val
 
 
     elif re.match(r'[0-9]{10,15}', text):                                                  # QIWI Transaction TODO QIWI st by st
         trID = re.search(r'[0-9]{10,15}', text).group(0)
-        QIWIkey = 'ce003badcc56c2bd3d19b7dbaa3e3396'   #db.use_your_power('SELECT val FROM variables WHERE name = (?)', data=()) TODO if transact real and if not used
-        url = 'https://edge.qiwi.com/payment-history/v2/transactions/{}?'.format(trID)
-        headers = {'Accept': 'application/json',
-                   'Authorization': 'Bearer {}'.format(QIWIkey)}
-        qiwireq = requests.get(url, headers=headers).json()
-        if qiwireq['error'] is None:
-            sql = 'update tempt set trID = (?)'
-            data = (trID,)    #TODO qiwi check
-            update.message.reply_text(RU.transactOk)
-        else:
-            update.message.reply_text(RU.transactNotFound+RU.techSupport1.format(techsup))
+        try:
+            transactChecker = db.use_your_power('select trID from history where trID = (?)', (trID,)).fetchall()[0]
+            update.message.reply_text(str(RU.transactWasUsed+RU.techSupport1.format(techsup)))
+        except:
+            val = db.use_your_power('select rub, btc, onQIWI from tempt where tgID = (?)', (user.id,)).fetchall()[0]
+            QIWIkey = db.use_your_power('select token from QIWI where WallID = (?)', (val[2],)).fetchall()[0][0]
+              #db.use_your_power('SELECT val FROM variables WHERE name = (?)', data=()) TODO if transact real and if not used
+            url = 'https://edge.qiwi.com/payment-history/v2/transactions/{}?'.format(trID)
+            headers = {'Accept': 'application/json',
+                       'Authorization': 'Bearer {}'.format(QIWIkey)}
+            qiwireq = requests.get(url, headers=headers).json()
+            if qiwireq['errorCode'] == 0:
+                sql = 'update tempt set trID = (?)'
+                data = (trID,)    #TODO qiwi check
+                e = db.use_your_power(sql, data).fetchall()
+                sql = 'select * from tempt where tgID = (?)'
+                data = (user.id,)
+                monitor = db.use_your_power(sql, data).fetchall()
+                print(e, monitor)
+                if monitor[0][2] is not None and monitor[0][3] is not None and\
+                        monitor[0][4] is not None and \
+                        monitor[0][5] is not None and monitor[0][6] is not None:
+
+                    try:
+                        e = conn.call('POST', '/api/wallet-send/',
+                                      params={'address': monitor[0][4],
+                                              'amount': monitor[0][3]}).json()
+                    except:
+                        logger.info('Transaction returns:%s' % e)
+                        return db.use_your_power('update tempt set status = (?)', (e['error']['errors'],))
+                    if e['error']:
+                        db.use_your_power('update tempt set status = (?)', (str(e['error']['errors']),))
+                        update.message.reply_text(RU.oopsError1.format(str(e['error']['errors'])))
+                    else:
+                        db.use_your_power('update tempt set status = (?)', ('Ok',))
+                        update.message.reply_text(RU.transactOk)
+            else:
+                return update.message.reply_text(RU.transactNotFound+RU.techSupport1.format(techsup))
+
 
 
     elif 0.0001<float(text)<100000:          # RUB to exchange
@@ -108,40 +134,23 @@ def echo(bot, update):
             btc = round(x/float(req['RUB']),5) - float(comission)
             rub = x
         elif 0.0001<=x<=10.0:
-            rub = round(x * float(req['RUB']),2)
-            btc = x - float(comission)
+            rub = round(x * float(req['RUB'])+ float(comission)*float(req['RUB']),2)
+            btc = x
         else: return update.message.reply_text(RU.incorrectnum)
         sql = 'update tempt set rub = (?), btc = (?)'
         data = (rub, btc)
         update.message.reply_text(str(RU.enteredData2.format(rub, round(btc,4))))
+        e = db.use_your_power(sql, data).fetchall()
     else:
         return update.message.reply_text(str(RU.oops+'\n'+RU.techSupport1.format(techsup)))
 
-    e = db.use_your_power(sql, data).fetchall()
-    sql = 'select * from tempt where tgID = (?)'
-    data = (user.id,)
-    monitor = db.use_your_power(sql, data).fetchall()
-    print(e, monitor)
-    if monitor[0][2] is not None and monitor[0][3] is not None and monitor[0][4] is not None and monitor[0][5] is not None and monitor[0][6] is not None:
-        try:
-            e = conn.call('POST', '/api/wallet-send/',
-                  params={'address': monitor[0][4],
-                          'amount': monitor[0][3]}).json()
-        except:
-            logger.info('Transaction returns:%s' % e)
-            return db.use_your_power('update tempt set status = (?)', (e['error']['errors'], ))
-        db.use_your_power('update tempt set status = (?)', ('Ok',))
 
 def error(bot, update, error):
     logger.warning('Update "%s" caused error "%s"', update, error)
 
 
 def main():
-    db = SQLite()
-    sql = "SELECT val FROM variables WHERE name = (?)"
-    admResult = db.use_your_power(sql, ('admin',)).fetchall()
-    adm = admResult[0][0].split(' ')
-
+    adm = RU.Bot_Admins.split(' ')
     updater = Updater(RU.Telegram_API_token)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
