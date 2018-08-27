@@ -24,11 +24,12 @@ conn = lbcAPI.hmac(hmack,hmacs)
 
 def start(bot, update):
     db = SQLite()
+    comission = db.use_your_power('SELECT val FROM variables WHERE name = "comission"').fetchall()[0][0]  # TODO commision
     update.message.reply_text(str(RU.welcome1.format(update.effective_chat.first_name)))
     price = requests.get('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
     pricenum = float(price['RUB'])
     min_sum = round(1000.0/pricenum, 5)
-    update.message.reply_text(str(RU.PricenFee3.format(min_sum, pricenum, 1)))  # TODO Комиссия
+    update.message.reply_text(str(RU.PricenFee3.format(min_sum, pricenum, comission)))
     logger.info("User %s start the conversation." % update.message.from_user.first_name)
     user = update.message.from_user
     try:
@@ -41,7 +42,7 @@ def start(bot, update):
 
 
 
-def admin(bot, update):
+def admin(bot, update): # TODO change source for admins list
     db = SQLite()
     update.message.reply_text('Help!')
 
@@ -64,7 +65,7 @@ def echo(bot, update):
     comission = db.use_your_power('SELECT val FROM variables WHERE name = "comission"').fetchall()[0][0]  # TODO commision
 
 
-    if re.match(r'[A-Za-z0-9]{32,40}', text):                                         # BTC Wallet TODO text
+    if re.match(r'[A-Za-z0-9]{32,40}', text):                                         # BTC Wallet
         wallet = re.match(r'[A-Za-z0-9]{34,40}', text).group(0)
         try: result = requests.get('https://blockchain.info/rawaddr/'+wallet).json()
         except: return update.message.reply_text(str(RU.wallNoExist1.format(wallet)+RU.techSupport1.format(techsup)))
@@ -78,7 +79,7 @@ def echo(bot, update):
         update.message.reply_text(str(RU.ifChange+RU.payonQIWI2.format(val))) #TODO get wall and rub from val
 
 
-    elif re.match(r'[0-9]{13}', text):                                                  # QIWI Transaction TODO text
+    elif re.match(r'[0-9]{13}', text):                                                  # QIWI Transaction TODO QIWI st by st
         trID = re.search(r'[0-9]{13}', text).group(0)
         QIWIkey = 'ce003badcc56c2bd3d19b7dbaa3e3396'   #db.use_your_power('SELECT val FROM variables WHERE name = (?)', data=()) TODO if transact real and if not used
         url = 'https://edge.qiwi.com/payment-history/v2/transactions/'+trID
@@ -87,6 +88,8 @@ def echo(bot, update):
         print(qiwireq)
         sql = 'update tempt set trID = (?)'
         data = (trID,)    #TODO qiwi check
+        update.message.reply_text(RU.transactOk)
+        update.message.reply_text(RU.transactNotFound+RU.techSupport1.format(techsup))
 
 
     elif 0.0001<float(text)<100000:          # RUB to exchange
@@ -95,11 +98,11 @@ def echo(bot, update):
         req = requests.get(
             'https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
         if 1000<x<100000:
-            btc = round(x/float(req['RUB']),5)
+            btc = round(x/float(req['RUB']),5) - comission
             rub = x
         elif 0.0001<x<10.0:
             rub = round(x * float(req['RUB']),2)
-            btc = x
+            btc = x - comission
         else: return update.message.reply_text(RU.incorrectnum)
         sql = 'update tempt set rub = (?), btc = (?)'
         data = (rub, btc)
