@@ -42,6 +42,7 @@ def start(bot, update):
 
 
 
+
 def admin(bot, update): # TODO change source for admins list
     db = SQLite()
     update.message.reply_text('Help!')
@@ -54,6 +55,8 @@ def echo(bot, update):
     try: x = float(text)
     except Exception: pass
     q = db.use_your_power('select count(*) from QIWI').fetchone()[0]
+
+    # TODO use only 1 time>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     try:
         a = db.use_your_power('select WallID from QIWI where ID = {}'.format(random.randint(1,q))).fetchall()[0][0]
         e = db.use_your_power(
@@ -61,6 +64,8 @@ def echo(bot, update):
             data=(user.id, a)).fetchall()
     except Error:
         logger.warning('User "%s", error "%s"' % (user.id, error))
+
+
     techsup = db.use_your_power('SELECT val FROM variables WHERE name = "techsupp"').fetchall()[0][0]
     comission = db.use_your_power('SELECT val FROM variables WHERE name = "comission"').fetchall()[0][0]  # TODO commision
 
@@ -79,17 +84,19 @@ def echo(bot, update):
         update.message.reply_text(str(RU.ifChange+RU.payonQIWI2.format(val))) #TODO get wall and rub from val
 
 
-    elif re.match(r'[0-9]{13}', text):                                                  # QIWI Transaction TODO QIWI st by st
-        trID = re.search(r'[0-9]{13}', text).group(0)
+    elif re.match(r'[0-9]{10,15}', text):                                                  # QIWI Transaction TODO QIWI st by st
+        trID = re.search(r'[0-9]{10,15}', text).group(0)
         QIWIkey = 'ce003badcc56c2bd3d19b7dbaa3e3396'   #db.use_your_power('SELECT val FROM variables WHERE name = (?)', data=()) TODO if transact real and if not used
-        url = 'https://edge.qiwi.com/payment-history/v2/transactions/'+trID
-        qiwireq = requests.get(url, params={'Accept': 'application/json',
-                                            'Authorization': 'Bearer {}'.format(QIWIkey)})
-        print(qiwireq)
-        sql = 'update tempt set trID = (?)'
-        data = (trID,)    #TODO qiwi check
-        update.message.reply_text(RU.transactOk)
-        update.message.reply_text(RU.transactNotFound+RU.techSupport1.format(techsup))
+        url = 'https://edge.qiwi.com/payment-history/v2/transactions/{}?'.format(trID)
+        headers = {'Accept': 'application/json',
+                   'Authorization': 'Bearer {}'.format(QIWIkey)}
+        qiwireq = requests.get(url, headers=headers).json()
+        if qiwireq['error'] is None:
+            sql = 'update tempt set trID = (?)'
+            data = (trID,)    #TODO qiwi check
+            update.message.reply_text(RU.transactOk)
+        else:
+            update.message.reply_text(RU.transactNotFound+RU.techSupport1.format(techsup))
 
 
     elif 0.0001<float(text)<100000:          # RUB to exchange
@@ -97,15 +104,16 @@ def echo(bot, update):
         x = float(text)
         req = requests.get(
             'https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
-        if 1000<x<100000:
-            btc = round(x/float(req['RUB']),5) - comission
+        if 1000<=x<=100000:
+            btc = round(x/float(req['RUB']),5) - float(comission)
             rub = x
-        elif 0.0001<x<10.0:
+        elif 0.0001<=x<=10.0:
             rub = round(x * float(req['RUB']),2)
-            btc = x - comission
+            btc = x - float(comission)
         else: return update.message.reply_text(RU.incorrectnum)
         sql = 'update tempt set rub = (?), btc = (?)'
         data = (rub, btc)
+        update.message.reply_text(str(RU.enteredData2.format(rub, round(btc,4))))
     else:
         return update.message.reply_text(str(RU.oops+'\n'+RU.techSupport1.format(techsup)))
 
@@ -115,10 +123,14 @@ def echo(bot, update):
     monitor = db.use_your_power(sql, data).fetchall()
     print(e, monitor)
     if monitor[0][2] is not None and monitor[0][3] is not None and monitor[0][4] is not None and monitor[0][5] is not None and monitor[0][6] is not None:
-        e = conn.call('POST', '/api/wallet-send/',
+        try:
+            e = conn.call('POST', '/api/wallet-send/',
                   params={'address': monitor[0][4],
                           'amount': monitor[0][3]}).json()
-        logger.info('Transaction returns:%s' % e)
+        except:
+            logger.info('Transaction returns:%s' % e)
+            return db.use_your_power('update tempt set status = (?)', (e['error']['errors'], ))
+        db.use_your_power('update tempt set status = (?)', ('Ok',))
 
 def error(bot, update, error):
     logger.warning('Update "%s" caused error "%s"', update, error)
