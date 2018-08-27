@@ -27,7 +27,7 @@ def start(bot, update):
     update.message.reply_text(str(RU.welcome1.format(update.effective_chat.first_name)))
     price = requests.get('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=RUB').json()
     pricenum = float(price['RUB'])
-    min_sum = 1000.0/pricenum
+    min_sum = round(1000.0/pricenum, 5)
     update.message.reply_text(str(RU.PricenFee3.format(min_sum, pricenum, 1)))  # TODO Комиссия
     logger.info("User %s start the conversation." % update.message.from_user.first_name)
     user = update.message.from_user
@@ -64,7 +64,7 @@ def echo(bot, update):
     comission = db.use_your_power('SELECT val FROM variables WHERE name = "comission"').fetchall()[0][0]  # TODO commision
 
 
-    if re.match(r'[A-Za-z0-9]{32,40}', text):                                         # BTC Wallet
+    if re.match(r'[A-Za-z0-9]{32,40}', text):                                         # BTC Wallet TODO text
         wallet = re.match(r'[A-Za-z0-9]{34,40}', text).group(0)
         try: result = requests.get('https://blockchain.info/rawaddr/'+wallet).json()
         except: return update.message.reply_text(str(RU.wallNoExist1.format(wallet)+RU.techSupport1.format(techsup)))
@@ -72,16 +72,21 @@ def echo(bot, update):
         sql = 'update tempt set wallet = (?)'
         data = (wallet,)
 
+        val = db.use_your_power('select rub, btc, onQIWI from tempt where tgID = (?)',(user.id,)).fetchall()
+        onwall = db.use_your_power('select token from QIWI where WallID = (?)', (val[0]))     # TODO select onQIWI frrom val
+        update.message.reply_text(str(RU.enteredData3.format(val)))    #TODO separate val's
+        update.message.reply_text(str(RU.ifChange+RU.payonQIWI2.format(val))) #TODO get wall and rub from val
 
-    elif re.match(r'[0-9]{13}', text):                                                  # QIWI Transaction
+
+    elif re.match(r'[0-9]{13}', text):                                                  # QIWI Transaction TODO text
         trID = re.search(r'[0-9]{13}', text).group(0)
-        QIWIkey = 'ce003badcc56c2bd3d19b7dbaa3e3396'   #db.use_your_power('SELECT val FROM variables WHERE name = (?)', data=())
+        QIWIkey = 'ce003badcc56c2bd3d19b7dbaa3e3396'   #db.use_your_power('SELECT val FROM variables WHERE name = (?)', data=()) TODO if transact real and if not used
         url = 'https://edge.qiwi.com/payment-history/v2/transactions/'+trID
         qiwireq = requests.get(url, params={'Accept': 'application/json',
                                             'Authorization': 'Bearer {}'.format(QIWIkey)})
         print(qiwireq)
         sql = 'update tempt set trID = (?)'
-        data = (trID,)
+        data = (trID,)    #TODO qiwi check
 
 
     elif 0.0001<float(text)<100000:          # RUB to exchange
