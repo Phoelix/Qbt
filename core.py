@@ -18,22 +18,23 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 sql = 'SELECT val FROM variables WHERE name = (?)'
-hmac = str(db.use_your_power(sql,('locBTC',)).fetchall()[0][0]).split(' ')
+data = 'locBTC'
+hmac = str(db.use_your_power(sql,(data,)).fetchall()[0][0]).split(' ')
 conn = lbcAPI.hmac(hmac[0],hmac[1])
-
+hookmask = r'^M\w{2}|^G\w{2}|^f\w{6}|^y\w{2}'
 
 
 def start(bot, update):
     db = SQLite()
-    msg = update.message.text
+    e = conn.call('GET', '/api/wallet-balance/').json()
     comission = db.use_your_power('SELECT val FROM variables WHERE name = "comission"').fetchall()[0][0]
     update.message.reply_text(str(RU.welcome1.format(update.effective_chat.first_name)))
     pricenum = float(db.use_your_power('select val from variables where name = "price"').fetchall()[0][0])
     min_sum = round(1000.0/pricenum, 5)
-    update.message.reply_text(str(RU.PricenFee3.format(min_sum, pricenum, comission)))
+    update.message.reply_text(str(RU.balance.format(e['data']['total']['sendable'])+RU.PricenFee3.format(min_sum, pricenum, comission)))
     logger.info("User %s start the conversation." % update.message.from_user.first_name)
-    adm.stat(msg)
     user = update.message.from_user
+    callback = adm.stat(bot, update)
     try:
         db.use_your_power(
             sql='INSERT OR  IGNORE  INTO    members (tgID, uname, fname) VALUES (?,?,?)',
