@@ -15,6 +15,7 @@ from SQLite import SQLite
 db = SQLite()
 logging.basicConfig(filename="WORKLOG.log", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 sql = 'SELECT val FROM variables WHERE name = "{}"'.format('locBTC')
 hmac = str(db.use_your_power(sql).fetchall()[0][0]).split(' ')
