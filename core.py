@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 import RU
@@ -11,10 +11,9 @@ import requests
 import threading
 from sqlite3 import Error
 from SQLite import SQLite
-#from telegram.ext import (Updater,CommandHandler,MessageHandler,Filters,RegexHandler)
 
 db = SQLite()
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+logging.basicConfig(filename="WORKLOG.log", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 sql = 'SELECT val FROM variables WHERE name = (?)'
@@ -35,12 +34,7 @@ def start(bot, update):
     logger.info("User %s start the conversation." % update.message.from_user.first_name)
     user = update.message.from_user
     callback = adm.stat(bot, update)
-    try:
-        db.use_your_power(
-            sql='INSERT OR  IGNORE  INTO    members (tgID, uname, fname) VALUES (?,?,?)',
-            data=(user.id, user.name, user.first_name))
-    except Error:
-        return  logger.warning('User "%s", error "%s"' % (user.id, error))
+
 
 
 def admin(bot, update): # TODO change source for admins list
