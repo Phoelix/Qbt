@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 QIWIhelp        = '/QIWIadd ключ -- добавить кошелек\n/QIWIdel -- удалить кошелек\n'
 QIWIwalList     = 'Сейчас есть такие кошельки:\n'
 QIWIadded       = 'Кошелек {} был добавлен\n'

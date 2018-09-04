@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 Telegram_API_token = '583566851:AAEHZ31knWpDCaqo_YCgqwKNbokyFhiyCnA'
 Bot_Admins         = '@PhoelixFelicitas @LittleBily'

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import hashlib
 import hmac as hmac_lib
 import requests
