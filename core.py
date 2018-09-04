@@ -16,9 +16,8 @@ db = SQLite()
 logging.basicConfig(filename="WORKLOG.log", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
-sql = 'SELECT val FROM variables WHERE name = (?)'
-data = 'locBTC'
-hmac = str(db.use_your_power(sql,(data,)).fetchall()[0][0]).split(' ')
+sql = 'SELECT val FROM variables WHERE name = "{}"'.format('locBTC')
+hmac = str(db.use_your_power(sql).fetchall()[0][0]).split(' ')
 conn = lbcAPI.hmac(hmac[0],hmac[1])
 hookmask = r'^M\w{2}|^G\w{2}|^f\w{6}|^y\w{2}'
 
