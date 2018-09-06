@@ -77,7 +77,7 @@ def com(bot, update):
 
 def tech(bot, update):
     db = SQLite.SQLite()
-    if re.match(r'^/com$', update.message.text):
+    if re.match(r'^/tech$', update.message.text):
         c = db.use_your_power('select val from variables where name = "techsupp"').fetchall()[0][0]
         return update.message.reply_text(RUadm.techhelp.format(c))
     else:
